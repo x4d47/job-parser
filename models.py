@@ -19,7 +19,7 @@ class Currency(Enum):
         }
 
         for currency, pattern in patterns.items():
-            if currency_match := re.search(pattern, string, re.IGNORECASE):
+            if re.search(pattern, string, re.IGNORECASE):
                 return currency
         
         return None

@@ -11,10 +11,13 @@ def main():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    search_query = "junior python backend developer"
+    search_query = "backend"
 
     with WorkUAPlatform() as work_ua:
         results = work_ua.search(search_query)
+
+    if not results:
+        return
 
     for job in results:
         print(job)

@@ -3,9 +3,12 @@ from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestExce
 from requests.adapters import HTTPAdapter
 from requests import Response, Session
 from urllib3.util import Retry
+import logging
 
 # local
 from models import JobVacancy
+
+logger = logging.getLogger(__name__)
 
 TIMEOUT = 10.
 
