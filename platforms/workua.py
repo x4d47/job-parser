@@ -6,24 +6,21 @@ import logging
 import re
 
 # local
-from models import JobPlatformType, JobVacancy
-from base_platform import JobPlatform
+from models import Currency, JobPlatformType, JobVacancy
+from .base_platform import JobPlatform
 
 logger = logging.getLogger(__name__)
 
 class WorkUAPlatform(JobPlatform):
     @staticmethod
-    def parse_salary(salary: str) -> tuple[int | None, int | None, str | None]:
+    def parse_salary(salary: str) -> tuple[int | None, int | None, Currency | None]:
         without_spaces = re.sub(r'\s+', '', salary)
         numbers = re.findall(r'\d+', without_spaces)
 
         salary_min = int(numbers[0]) if len(numbers) >= 1 else None
         salary_max = int(numbers[1]) if len(numbers) >= 2 else None
 
-        currency_pattern = r'(грн|uah|usd|\$|eur|€|pln|zł)'
-        currency_match = re.search(currency_pattern, salary, re.IGNORECASE)
-        
-        currency = currency_match.group().lower() if currency_match else "грн"
+        currency = Currency.from_str(salary)
 
         if (salary_min is None) and (salary_max is None):
             currency = None

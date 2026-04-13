@@ -18,7 +18,7 @@ def main():
 
     for job in results:
         print(job)
-        print("----------------\n")
+        print("\n----------------\n")
 
 if __name__ == '__main__':
     main()

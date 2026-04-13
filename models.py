@@ -1,5 +1,31 @@
 from dataclasses import dataclass
-from enum import Enum, auto
+from typing import Self
+from enum import Enum
+import re
+
+class Currency(Enum):
+    UAH = "₴"
+    USD = "$"
+    EUR = "€"
+    PLN = "zł"
+
+    @classmethod
+    def from_str(cls, string: str) -> Self | None:
+        patterns: dict[Currency, str] = {
+            cls.UAH: r'(грн|uah|₴)',
+            cls.USD: r'(usd|\$)',
+            cls.EUR: r'(eur|€)',
+            cls.PLN: r'(pln|zł)'
+        }
+
+        for currency, pattern in patterns.items():
+            if currency_match := re.search(pattern, string, re.IGNORECASE):
+                return currency
+        
+        return None
+    
+    def __str__(self):
+        return self.value
 
 class JobPlatformType(Enum):
     WORKUA = "Work.ua"
@@ -13,7 +39,7 @@ class JobVacancy:
     company: str
     salary_min: int | None
     salary_max: int | None
-    currency: str | None
+    currency: Currency | None
     description: str
     job_platform: JobPlatformType
     link: str
