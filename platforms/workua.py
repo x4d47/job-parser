@@ -1,4 +1,3 @@
-from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
 from html_to_markdown import convert as to_markdown
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
@@ -177,5 +176,8 @@ class WorkUAPlatform(JobPlatform):
                 break
 
             vacancies.extend(self.process_search_page(search_response.content))
+
+        if len(vacancies) == 0:
+            return None
 
         return vacancies

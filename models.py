@@ -29,6 +29,7 @@ class Currency(Enum):
 
 class JobPlatformType(Enum):
     WORKUA = "Work.ua"
+    DOU = "DOU"
 
     def __str__(self):
         return self.value

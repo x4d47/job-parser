@@ -2,6 +2,7 @@ import logging
 
 # local
 from platforms.workua import WorkUAPlatform
+from platforms.dou import DOUPlatform
 
 def main():
     logging.basicConfig(
@@ -11,10 +12,13 @@ def main():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    search_query = "junior python backend developer"
+    search_query = "junior python"
 
-    with WorkUAPlatform() as work_ua:
-        results = work_ua.search(search_query)
+    # with WorkUAPlatform() as work_ua:
+    #     results = work_ua.search(search_query)
+
+    with DOUPlatform() as dou:
+        results = dou.search(search_query)
 
     if not results:
         return
