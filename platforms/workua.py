@@ -86,55 +86,60 @@ class WorkUAPlatform(JobPlatform):
         
         return vacancies
 
-    def parse_job_page(self, page_content: bytes, link: str) -> JobVacancy:
+    def parse_job_page(self, page_content: bytes, link: str) -> JobVacancy | None:
         soup = BeautifulSoup(page_content, 'html.parser')
 
         # Title
 
         if not (title_tag := soup.find('h1', id='h1-name')):
+            logger.debug("Title tag not found for: %s", link)
             return None
 
         if not (title := title_tag.text):
+            logger.debug("Title tag is empty for: %s", link)
             return None
 
+        # Metadata block
+
         if not (metadata_block := soup.find('ul', class_='list-unstyled sm:mt-xl mt-lg mb-0')):
+            logger.debug("Metadata block not found for: %s", link)
             return None
 
         # Salary and currency
 
+        salary_tag = metadata_block.select_one('span.glyphicon-hryvnia-fill + span.strong-500')
+        
         salary_min, salary_max, currency = None, None, None
 
-        if salary_icon := metadata_block.find('span', class_='glyphicon-hryvnia-fill'):
-            if salary_tag := salary_icon.find_next_sibling('span', class_='strong-500'):
-                if salary := salary_tag.text:
-                    salary_min, salary_max, currency = self.parse_salary(salary)
+        if salary_tag and salary_tag.text:
+            salary_min, salary_max, currency = self.parse_salary(salary_tag.text)
 
         # Company
 
-        if not (company_icon := metadata_block.find('span', class_='glyphicon-company')):
+        company_tag = metadata_block.select_one('span.glyphicon-company + a > span')
+
+        if not (company_tag and company_tag.text):
+            logger.debug("Company not found for: %s", link)
             return None
 
-        if not (a_tag := company_icon.find_next_sibling('a')):
-            return None
-
-        if not (company_tag := a_tag.find('span', class_='strong-500')):
-            return None
-
-        if not (company := company_tag.text):
-            return None
+        company = company_tag.text
 
         # Is remote
 
-        is_remote = True if metadata_block.find('span', class_='glyphicon-remote') else False
+        is_remote = bool(metadata_block.find('span', class_='glyphicon-remote'))
 
         # Description
 
         if not (description_block := soup.find('div', id='job-description')):
+            logger.debug("Description block not found for: %s", link)
             return None
 
-        # to do: check for errors!
         description_dict = to_markdown(str(description_block))
-        description = description_dict['content']
+        description = description_dict.get('content')
+
+        if not description:
+            logger.debug("Description is empty for: %s", link)
+            return None
 
         # Final result
         return JobVacancy(

@@ -11,7 +11,7 @@ def main():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    search_query = "backend"
+    search_query = "junior python backend developer"
 
     with WorkUAPlatform() as work_ua:
         results = work_ua.search(search_query)
