@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from sqlmodel import SQLModel, Field
 from typing import Self
 from enum import Enum
 import re
@@ -34,16 +34,16 @@ class JobPlatformType(Enum):
     def __str__(self):
         return self.value
 
-@dataclass(frozen=True)
-class JobVacancy:
+class JobVacancy(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
     title: str
     company: str
-    salary_min: int | None
-    salary_max: int | None
-    currency: Currency | None
     description: str
     job_platform: JobPlatformType
-    link: str
+    link: str = Field(unique=True, index=True)
+    salary_min: int | None = None
+    salary_max: int | None = None
+    currency: Currency | None = None
     is_remote: bool = False
 
     def format_salary(self) -> str:
@@ -66,3 +66,12 @@ class JobVacancy:
             f"Платформа: {self.job_platform}\n"
             f"Посилання: {self.link}"
         )
+    
+    def __eq__(self, other):
+        if not isinstance(other, JobVacancy):
+            return NotImplemented
+
+        return self.link == other.link
+    
+    def __hash__(self):
+        return hash(self.link)

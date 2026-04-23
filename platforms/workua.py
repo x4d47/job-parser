@@ -153,7 +153,7 @@ class WorkUAPlatform(JobPlatform):
             is_remote=is_remote
         )
 
-    def search(self, query: str) -> list[JobVacancy] | None:
+    def search(self, query: str) -> list[JobVacancy]:
         base_url: str = "https://www.work.ua/jobs/?search="
 
         if (search_response := self.fetch(f"{base_url}{quote_plus(query)}")) is None:
@@ -177,7 +177,4 @@ class WorkUAPlatform(JobPlatform):
 
             vacancies.extend(self.process_search_page(search_response.content))
 
-        if len(vacancies) == 0:
-            return None
-
-        return vacancies
+        return list(dict.fromkeys(vacancies))

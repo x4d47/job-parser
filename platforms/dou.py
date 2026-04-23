@@ -132,7 +132,7 @@ class DOUPlatform(JobPlatform):
         
         return vacancies
 
-    def search(self, query: str) -> list[JobVacancy] | None:
+    def search(self, query: str) -> list[JobVacancy]:
         base_url: str = "https://jobs.dou.ua/vacancies/?search="
 
         if (search_response := self.fetch(f"{base_url}{quote_plus(query)}")) is None:
@@ -144,7 +144,5 @@ class DOUPlatform(JobPlatform):
         # Remaining pages (not sure if there is pagination)
         # ...
 
-        if len(vacancies) == 0:
-            return None
-
-        return vacancies
+        # Return only unique vacancies
+        return list(dict.fromkeys(vacancies))
