@@ -112,17 +112,16 @@ class DOUPlatform(JobPlatform):
 
         # Is remote
 
+        is_remote = False
+
         if not (location_tag := vacancy_container.find('span', class_="place bi bi-geo-alt-fill")):
             logger.debug("Location tag not found for: %s", link)
-            return None
 
-        if not (location := location_tag.get_text(strip=True)):
+        elif not (location := location_tag.get_text(strip=True)):
             logger.debug("Location tag is empty for: %s", link)
-            return None
         
-        # TODO: fix for https://jobs.dou.ua/companies/temerix/vacancies/351290/
-        # location = "Вінниця, за кордоном, віддалено"
-        is_remote = bool(location.lower() == "віддалено")
+        else:
+            is_remote = "віддалено" in location.lower()
 
         # Salary
 
