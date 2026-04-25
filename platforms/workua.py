@@ -71,7 +71,7 @@ class WorkUAPlatform(JobPlatform):
         links: list[str] = self.extract_job_links(page_content)
 
         for link in links:
-            if (response := self.fetch(link)) is None:
+            if (response := self.get(link)) is None:
                 logger.warning("Failed to fetch job page: %s. Skipping", link)
                 continue
 
@@ -156,8 +156,9 @@ class WorkUAPlatform(JobPlatform):
     def search(self, query: str) -> list[JobVacancy]:
         base_url: str = "https://www.work.ua/jobs/?search="
 
-        if (search_response := self.fetch(f"{base_url}{quote_plus(query)}")) is None:
-            return None
+        if (search_response := self.get(f"{base_url}{quote_plus(query)}")) is None:
+            # TODO: logger.warning()
+            return []
 
         # After redirect `/jobs/?search=python+backend` changes to `/jobs-python+backend/`
         # We have to use this new url
@@ -172,7 +173,7 @@ class WorkUAPlatform(JobPlatform):
 
         # Remaining pages
         for page in range(2, pages_count + 1):
-            if (search_response := self.fetch(f"{page_base_url}{page}")) is None:
+            if (search_response := self.get(f"{page_base_url}{page}")) is None:
                 break
 
             vacancies.extend(self.process_search_page(search_response.content))

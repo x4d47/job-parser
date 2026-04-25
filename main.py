@@ -5,40 +5,50 @@ import logging
 from platforms.workua import WorkUAPlatform
 from platforms.dou import DOUPlatform
 from models import JobVacancy
+from exceptions import PlatformInitError
 
 def main():
     logging.basicConfig(
         filename='app.log',
-        level=logging.INFO,
+        level=logging.DEBUG,
         format='%(asctime)s [%(levelname)s] %(name)s (%(filename)s:%(lineno)d): %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
+
+    logger = logging.getLogger(__name__)
 
     db_engine = create_engine("sqlite:///database.db")
 
     SQLModel.metadata.create_all(db_engine)
 
-    search_query = "junior python"
+    search_query = "python"
 
     # with WorkUAPlatform() as work_ua:
-    #     results = work_ua.search(search_query)
+    #     vacancies = work_ua.search(search_query)
 
-    with DOUPlatform() as dou:
-        results = dou.search(search_query)
+    vacancies = []
 
-    if not results:
+    try:
+        with DOUPlatform() as dou:
+            vacancies.extend(dou.search(search_query))
+    except PlatformInitError as e:
+        logger.error("Platform init error: %s", e)
+    except Exception as e:
+        logger.exception("Unexpected exception (DOU platform): %s", e)
+
+    if not vacancies:
         return
 
     with Session(db_engine) as db_session:
-        result_links = [job.link for job in results]
+        vacancy_links = [job.link for job in vacancies]
 
         stored_links = set(
             db_session.exec(
-                select(JobVacancy.link).where(JobVacancy.link.in_(result_links))
+                select(JobVacancy.link).where(JobVacancy.link.in_(vacancy_links))
             ).all()
         )
 
-        for job in results:
+        for job in vacancies:
             if job.link not in stored_links:
                 db_session.add(job)
         

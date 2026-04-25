@@ -1,7 +1,7 @@
-from abc import ABC, abstractmethod
 from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
 from requests.adapters import HTTPAdapter
 from requests import Response, Session
+from abc import ABC, abstractmethod
 from urllib3.util import Retry
 import logging
 
@@ -16,7 +16,7 @@ class JobPlatform(ABC):
     def __init__(self):
         self.session = self.create_session()
 
-    def create_session(self):
+    def create_session(self) -> Session:
         session = Session()
 
         session.headers.update({
@@ -38,22 +38,41 @@ class JobPlatform(ABC):
 
         return session
 
-    def fetch(self, url: str, timeout: float = TIMEOUT) -> Response | None:
+    def get(self, url: str, timeout: float = TIMEOUT) -> Response | None:
         try:
             response = self.session.get(url, timeout=timeout)
             response.raise_for_status()
             return response
 
         except Timeout:
-            logger.warning("Request timeout (%ss) for '%s'", timeout, url)
+            logger.warning("[GET] request timeout (%ss) for '%s'", timeout, url)
         except ConnectionError:
-            logger.warning("Connection error for '%s'", url)
+            logger.warning("[GET] Connection error for '%s'", url)
         except HTTPError as http_err:
-            logger.error("HTTP error occurred: %s", http_err)
+            logger.error("[GET] HTTP error occurred: %s", http_err)
         except RequestException as e:
-            logger.error("Request exception: %s", e)
+            logger.error("[GET] Request exception: %s", e)
         except Exception as e:
-            logger.exception("Exception: %s", e)
+            logger.exception("[GET] Exception: %s", e)
+        
+        return None
+
+    def post(self, url: str, data: dict | None = None, json: dict | None = None, timeout: float = TIMEOUT) -> Response | None:
+        try:
+            response = self.session.post(url, data=data, json=json, timeout=timeout)
+            response.raise_for_status()
+            return response
+
+        except Timeout:
+            logger.warning("[POST] request timeout (%ss) for '%s'", timeout, url)
+        except ConnectionError:
+            logger.warning("[POST] Connection error for '%s'", url)
+        except HTTPError as http_err:
+            logger.error("[POST] HTTP error occurred: %s", http_err)
+        except RequestException as e:
+            logger.error("[POST] Request exception: %s", e)
+        except Exception as e:
+            logger.exception("[POST] Exception: %s", e)
         
         return None
 

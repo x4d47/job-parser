@@ -1,0 +1,2 @@
+class PlatformInitError(Exception):
+    pass
