@@ -14,9 +14,9 @@ TIMEOUT = 10.
 
 class JobPlatform(ABC):
     def __init__(self):
-        self.session = self.create_session()
+        self._session = self._create_session()
 
-    def create_session(self) -> Session:
+    def _create_session(self) -> Session:
         session = Session()
 
         session.headers.update({
@@ -40,7 +40,7 @@ class JobPlatform(ABC):
 
     def get(self, url: str, timeout: float = TIMEOUT) -> Response | None:
         try:
-            response = self.session.get(url, timeout=timeout)
+            response = self._session.get(url, timeout=timeout)
             response.raise_for_status()
             return response
 
@@ -59,7 +59,7 @@ class JobPlatform(ABC):
 
     def post(self, url: str, data: dict | None = None, json: dict | None = None, timeout: float = TIMEOUT) -> Response | None:
         try:
-            response = self.session.post(url, data=data, json=json, timeout=timeout)
+            response = self._session.post(url, data=data, json=json, timeout=timeout)
             response.raise_for_status()
             return response
 
@@ -87,4 +87,4 @@ class JobPlatform(ABC):
         self.close()
 
     def close(self):
-        self.session.close()
+        self._session.close()

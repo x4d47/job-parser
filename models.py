@@ -1,5 +1,4 @@
 from sqlmodel import SQLModel, Field
-from typing import Self
 from enum import Enum
 import re
 
@@ -10,7 +9,7 @@ class Currency(Enum):
     PLN = "zł"
 
     @classmethod
-    def from_str(cls, string: str) -> Self | None:
+    def from_str(cls, string: str) -> Currency | None:
         patterns: dict[Currency, str] = {
             cls.UAH: r'(грн|uah|₴)',
             cls.USD: r'(usd|\$)',

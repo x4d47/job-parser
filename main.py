@@ -1,4 +1,4 @@
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel, create_engine, select, col
 import logging
 
 # local
@@ -44,7 +44,7 @@ def main():
 
         stored_links = set(
             db_session.exec(
-                select(JobVacancy.link).where(JobVacancy.link.in_(vacancy_links))
+                select(JobVacancy.link).where(col(JobVacancy.link).in_(vacancy_links))
             ).all()
         )
 

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class WorkUAPlatform(JobPlatform):
     @staticmethod
-    def get_pages_count(page_content: bytes) -> int:
+    def _get_pages_count(page_content: bytes) -> int:
         soup = BeautifulSoup(page_content, 'html.parser')
 
         if not (pagination_ul := soup.find('ul', class_='pagination pagination-small visible-xs-block')):
@@ -32,7 +32,7 @@ class WorkUAPlatform(JobPlatform):
         return 1
 
     @staticmethod
-    def extract_job_links(page_content: bytes) -> list[str]:
+    def _extract_job_links(page_content: bytes) -> list[str]:
         soup = BeautifulSoup(page_content, 'html.parser')
 
         job_cards = soup.find_all('div', class_='job-link')
@@ -51,7 +51,7 @@ class WorkUAPlatform(JobPlatform):
         return links
 
     @staticmethod
-    def parse_salary(salary: str) -> tuple[int | None, int | None, Currency | None]:
+    def _parse_salary(salary: str) -> tuple[int | None, int | None, Currency | None]:
         without_spaces = re.sub(r'\s+', '', salary)
         numbers = re.findall(r'\d+', without_spaces)
 
@@ -65,17 +65,17 @@ class WorkUAPlatform(JobPlatform):
 
         return salary_min, salary_max, currency
 
-    def process_search_page(self, page_content: bytes) -> list[JobVacancy]:
+    def _process_search_page(self, page_content: bytes) -> list[JobVacancy]:
         vacancies: list[JobVacancy] = []
 
-        links: list[str] = self.extract_job_links(page_content)
+        links: list[str] = self._extract_job_links(page_content)
 
         for link in links:
             if (response := self.get(link)) is None:
                 logger.warning("Failed to fetch job page: %s. Skipping", link)
                 continue
 
-            vacancy: JobVacancy = self.parse_job_page(response.content, link)
+            vacancy: JobVacancy | None = self._parse_job_page(response.content, link)
 
             if vacancy is None:
                 logger.warning("Failed to parse job page: %s. Skipping", link)
@@ -85,7 +85,7 @@ class WorkUAPlatform(JobPlatform):
         
         return vacancies
 
-    def parse_job_page(self, page_content: bytes, link: str) -> JobVacancy | None:
+    def _parse_job_page(self, page_content: bytes, link: str) -> JobVacancy | None:
         soup = BeautifulSoup(page_content, 'html.parser')
 
         # Title
@@ -111,7 +111,7 @@ class WorkUAPlatform(JobPlatform):
         salary_min, salary_max, currency = None, None, None
 
         if salary_tag and salary_tag.text:
-            salary_min, salary_max, currency = self.parse_salary(salary_tag.text)
+            salary_min, salary_max, currency = self._parse_salary(salary_tag.text)
 
         # Company
 
@@ -166,16 +166,16 @@ class WorkUAPlatform(JobPlatform):
 
         page_base_url: str = f"{new_location}?page="
 
-        pages_count: int = self.get_pages_count(search_response.content)
+        pages_count: int = self._get_pages_count(search_response.content)
 
         # First page
-        vacancies: list[JobVacancy] = self.process_search_page(search_response.content)
+        vacancies: list[JobVacancy] = self._process_search_page(search_response.content)
 
         # Remaining pages
         for page in range(2, pages_count + 1):
             if (search_response := self.get(f"{page_base_url}{page}")) is None:
                 break
 
-            vacancies.extend(self.process_search_page(search_response.content))
+            vacancies.extend(self._process_search_page(search_response.content))
 
         return list(dict.fromkeys(vacancies))

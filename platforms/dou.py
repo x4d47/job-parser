@@ -1,7 +1,7 @@
 from html_to_markdown import convert as to_markdown
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
-from requests import Session
+from requests import Response, Session
 import logging
 import re
 
@@ -13,8 +13,8 @@ from .base_platform import JobPlatform
 logger = logging.getLogger(__name__)
 
 class DOUPlatform(JobPlatform):
-    def create_session(self) -> Session:
-        session = super().create_session()
+    def _create_session(self) -> Session:
+        session: Session = super()._create_session()
 
         url = "https://jobs.dou.ua/"
 
@@ -30,15 +30,15 @@ class DOUPlatform(JobPlatform):
             session.close()
             raise PlatformInitError(f"DOU init error: {e}")
 
-        self.csrf_token = response.cookies.get('csrftoken')
+        self._csrf_token: str | None = response.cookies.get('csrftoken')
 
-        if not self.csrf_token:
+        if not self._csrf_token:
             raise PlatformInitError("Failed to get CSRF token for DOU")
 
         return session
 
     @staticmethod
-    def get_total_vacancies(page_content: bytes, link: str) -> int | None:
+    def _get_total_vacancies(page_content: bytes, link: str) -> int | None:
         soup = BeautifulSoup(page_content, 'html.parser')
         
         header_tag = soup.select_one('.b-vacancies-head .b-inner-page-header > h1')
@@ -54,7 +54,7 @@ class DOUPlatform(JobPlatform):
         return int(regex_result.group())
         
     @staticmethod
-    def parse_salary(salary: str) -> tuple[int | None, int | None, Currency | None]:
+    def _parse_salary(salary: str) -> tuple[int | None, int | None, Currency | None]:
         without_spaces = re.sub(r'\s+', '', salary)
         numbers = re.findall(r'\d+', without_spaces)
 
@@ -69,7 +69,7 @@ class DOUPlatform(JobPlatform):
         return salary_min, salary_max, currency
 
     @staticmethod
-    def extract_job_links(page_content: bytes, from_xhr: bool) -> list[str]:
+    def _extract_job_links(page_content: bytes, from_xhr: bool) -> list[str]:
         soup = BeautifulSoup(page_content, 'html.parser')
 
         if from_xhr:
@@ -85,10 +85,12 @@ class DOUPlatform(JobPlatform):
 
         return links
 
-    def parse_job_page(self, page_content: bytes, link: str) -> JobVacancy | None:
+    def _parse_job_page(self, page_content: bytes, link: str) -> JobVacancy | None:
         soup = BeautifulSoup(page_content, 'html.parser')
 
-        vacancy_container = soup.find('div', class_='b-vacancy')
+        if not (vacancy_container := soup.find('div', class_='b-vacancy')):
+            logger.debug("Vacancy container not found for: %s", link)
+            return None
 
         # Company
 
@@ -130,7 +132,7 @@ class DOUPlatform(JobPlatform):
         salary_min, salary_max, currency = None, None, None
 
         if salary_tag and salary_tag.text:
-            salary_min, salary_max, currency = self.parse_salary(salary_tag.text)
+            salary_min, salary_max, currency = self._parse_salary(salary_tag.text)
         
         # Description
 
@@ -158,17 +160,17 @@ class DOUPlatform(JobPlatform):
             is_remote=is_remote
         )
 
-    def process_search_page(self, page_content: bytes, from_xhr: bool = False) -> list[JobVacancy]:
+    def _process_search_page(self, page_content: bytes, from_xhr: bool = False) -> list[JobVacancy]:
         vacancies: list[JobVacancy] = []
 
-        links: list[str] = self.extract_job_links(page_content, from_xhr)
+        links: list[str] = self._extract_job_links(page_content, from_xhr)
 
         for link in links:
             if (response := self.get(link)) is None:
                 logger.warning("Failed to fetch job page: %s. Skipping", link)
                 continue
 
-            vacancy: JobVacancy = self.parse_job_page(response.content, link)
+            vacancy: JobVacancy | None = self._parse_job_page(response.content, link)
 
             if vacancy is None:
                 logger.warning("Failed to parse job page: %s. Skipping", link)
@@ -178,15 +180,19 @@ class DOUPlatform(JobPlatform):
         
         return vacancies
 
-    def load_vacancies(self, loaded_vacancies_count: int) -> (bytes, int, bool) | None:
+    def _load_vacancies(self, loaded_vacancies_count: int) -> tuple[bytes, int, bool] | tuple[None, None, None]:
         url = "https://jobs.dou.ua/vacancies/xhr-load/?search=python"
 
         payload = {
-            "csrfmiddlewaretoken": self.csrf_token,
+            "csrfmiddlewaretoken": self._csrf_token,
             "count": f"{loaded_vacancies_count}"
         }
 
-        response = self.post(url, data=payload)
+        response: Response | None = self.post(url, data=payload)
+
+        if not response:
+            logger.warning("No response received from the server.")
+            return (None, None, None)
 
         try:
             r = response.json()
@@ -198,8 +204,8 @@ class DOUPlatform(JobPlatform):
             return (vacancies, amount, is_last)
 
         except Exception as e:
-            logger.warning("Failed to load more vacancies: %s", e)
-            return None
+            logger.warning("Failed to parse vacancies response: %s", e)
+            return (None, None, None)
 
     def search(self, query: str) -> list[JobVacancy]:
         base_url: str = "https://jobs.dou.ua/vacancies/?search="
@@ -209,23 +215,27 @@ class DOUPlatform(JobPlatform):
             logger.warning("Failed to fetch search page: %s", query_url)
             return []
 
-        total_vacancies: int | None = self.get_total_vacancies(search_response.content, query_url)
+        total_vacancies: int | None = self._get_total_vacancies(search_response.content, query_url)
 
         if total_vacancies is None:
             logger.warning("Failed to get total vacancies number for: %s", query_url)
             return []
 
         # First page
-        vacancies: list[JobVacancy] = self.process_search_page(search_response.content)
+        vacancies: list[JobVacancy] = self._process_search_page(search_response.content)
 
         # Remaining pages (XHR pagination)
         if total_vacancies > 20:
             loaded_vacancies_count = 20
-            is_last: bool = False
+            is_last = False
 
             while not is_last:
-                vacancies_html, amount, is_last = self.load_vacancies(loaded_vacancies_count)
-                vacancies.extend(self.process_search_page(vacancies_html, from_xhr=True))
+                vacancies_html, amount, is_last = self._load_vacancies(loaded_vacancies_count)
+
+                if (vacancies_html is None) or (amount is None) or (is_last is None):
+                    break
+                
+                vacancies.extend(self._process_search_page(vacancies_html, from_xhr=True))
                 loaded_vacancies_count += amount
 
         # Return only unique vacancies
